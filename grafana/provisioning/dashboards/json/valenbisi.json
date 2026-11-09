@@ -1,0 +1,58 @@
+{
+  "uid": "valenbisi-main",
+  "title": "Valenbisi",
+  "tags": ["valenbisi"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Bicicletas libres",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"},
+      "targets": [{"refId": "A", "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"}, "editorMode": "code", "format": "table", "rawQuery": true,
+        "rawSql": "SELECT COALESCE(SUM(u.bicis_libres),0) AS bicis FROM (SELECT DISTINCT ON (estacion_id) estacion_id, bicis_libres FROM mediciones ORDER BY estacion_id, momento DESC) u"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto", "orientation": "auto"}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Huecos vacíos",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"},
+      "targets": [{"refId": "A", "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"}, "editorMode": "code", "format": "table", "rawQuery": true,
+        "rawSql": "SELECT COALESCE(SUM(u.huecos_libres),0) AS huecos FROM (SELECT DISTINCT ON (estacion_id) estacion_id, huecos_libres FROM mediciones ORDER BY estacion_id, momento DESC) u"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto", "orientation": "auto"}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Total de estaciones",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"},
+      "targets": [{"refId": "A", "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"}, "editorMode": "code", "format": "table", "rawQuery": true,
+        "rawSql": "SELECT COUNT(*) AS estaciones FROM estaciones"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto", "orientation": "auto"}
+    },
+    {
+      "id": 4, "type": "geomap", "title": "Mapa de estaciones",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 6},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"},
+      "targets": [{"refId": "A", "datasource": {"type": "grafana-postgresql-datasource", "uid": "postgres-valenbisi"}, "editorMode": "code", "format": "table", "rawQuery": true,
+        "rawSql": "SELECT e.nombre AS name, e.latitud AS latitude, e.longitud AS longitude, u.bicis_libres AS bicis, u.huecos_libres AS huecos FROM estaciones e JOIN (SELECT DISTINCT ON (estacion_id) estacion_id, bicis_libres, huecos_libres FROM mediciones ORDER BY estacion_id, momento DESC) u ON u.estacion_id = e.id WHERE e.latitud IS NOT NULL AND e.longitud IS NOT NULL"}],
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {
+        "view": {"id": "zero", "lat": 39.47, "lon": -0.37, "zoom": 12},
+        "controls": {"showZoom": true, "mouseWheelZoom": true},
+        "basemap": {"type": "default", "name": "Basemap", "config": {}},
+        "layers": [{
+          "type": "markers", "name": "Estaciones",
+          "config": {"showLegend": false, "style": {"size": {"fixed": 6, "min": 3, "max": 10}, "color": {"fixed": "dark-green"}, "opacity": 0.9}},
+          "location": {"mode": "auto"}, "tooltip": true
+        }],
+        "tooltip": {"mode": "details"}
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+grafana/grafana.db
+__pycache__/
+*.pyc
+.env
+influxdb/
+grafana/plugins/
+grafana/csv/
+grafana/pdf/
+grafana/png/
+grafana/unified-search/
+grafana/*.db
+grafana/log/
+influxdb/
+grafana/plugins/

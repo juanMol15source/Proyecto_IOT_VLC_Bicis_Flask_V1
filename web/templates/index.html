@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valenbisi</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --fondo: #0b2a1f;
+    --tarjeta: #134130;
+    --borde: #1f5c44;
+    --acento: #7ed957;
+    --texto: #e6f4ea;
+    --suave: #9cc7ad;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--fondo); color: var(--texto);
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem;
+  }
+  h1 { margin: 0; font-size: 2rem; color: var(--acento); }
+  .suave { color: var(--suave); font-size: .9rem; }
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .kpi, .grafica {
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 1.2rem 1.5rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  .kpi .etiqueta {
+    color: var(--suave); text-transform: uppercase;
+    letter-spacing: .08em; font-size: .8rem;
+  }
+  .kpi .valor { font-size: 3.2rem; font-weight: 700; color: var(--acento); line-height: 1.1; margin-top: .3rem; }
+  .graficas {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1rem;
+  }
+  .grafica h2 { margin: 0 0 .8rem; font-size: 1.05rem; font-weight: 600; }
+  .grafica canvas { max-height: 320px; }
+  @media (max-width: 520px) {
+    body { padding: 1rem; }
+    .graficas { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Valenbisi</h1>
+  <span class="suave" id="estado">Cargando datos…</span>
+</header>
+
+<section class="kpis">
+  <div class="kpi">
+    <div class="etiqueta">Bicicletas libres</div>
+    <div class="valor" id="kpi-bicis">–</div>
+  </div>
+  <div class="kpi">
+    <div class="etiqueta">Estaciones activas</div>
+    <div class="valor" id="kpi-estaciones">–</div>
+  </div>
+</section>
+
+<section class="graficas">
+  <div class="grafica">
+    <h2>Top 10 estaciones con más bicis</h2>
+    <canvas id="g-top"></canvas>
+  </div>
+  <div class="grafica">
+    <h2>Ocupación de la red <span id="g-ocupacion-txt" class="suave"></span></h2>
+    <canvas id="g-ocupacion"></canvas>
+  </div>
+  <div class="grafica">
+    <h2>Evolución de bicis libres (últimas 6 horas)</h2>
+    <canvas id="g-evolucion"></canvas>
+  </div>
+  <div class="grafica">
+    <h2>Bicis libres medias por hora (últimos 7 días)</h2>
+    <canvas id="g-horas"></canvas>
+  </div>
+</section>
+
+<script>
+  Chart.defaults.color = '#c9e6d2';
+  Chart.defaults.borderColor = '#1f5c44';
+  const VERDE = '#7ed957';
+  const VERDE_OSCURO = '#2e7d4f';
+  const VERDE_SUAVE = 'rgba(126, 217, 87, 0.22)';
+  const graficas = {};
+
+  function dibujar(id, config) {
+    if (graficas[id]) graficas[id].destroy();
+    graficas[id] = new Chart(document.getElementById(id), config);
+  }
+
+  async function obtener(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(url + ' (HTTP ' + r.status + ')');
+    return r.json();
+  }
+
+  async function cargar() {
+    try {
+      const [kpis, top, oc, evo, horas] = await Promise.all([
+        obtener('/api/kpis'),
+        obtener('/api/top-bicis'),
+        obtener('/api/ocupacion'),
+        obtener('/api/evolucion'),
+        obtener('/api/horas'),
+      ]);
+
+      document.getElementById('kpi-bicis').textContent = kpis.bicis;
+      document.getElementById('kpi-estaciones').textContent = kpis.estaciones;
+      document.getElementById('g-ocupacion-txt').textContent = '· ' + oc.porcentaje + '% ocupado';
+      document.getElementById('estado').textContent =
+        'Actualizado a las ' + new Date().toLocaleTimeString('es-ES');
+
+      dibujar('g-top', {
+        type: 'bar',
+        data: {
+          labels: top.map(r => r.estacion),
+          datasets: [{ label: 'Bicis libres', data: top.map(r => r.bicis),
+                       backgroundColor: VERDE, borderRadius: 6 }],
+        },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } },
+      });
+
+      dibujar('g-ocupacion', {
+        type: 'doughnut',
+        data: {
+          labels: ['Bicis libres', 'Huecos libres'],
+          datasets: [{ data: [oc.bicis, oc.huecos],
+                       backgroundColor: [VERDE, VERDE_OSCURO], borderWidth: 0 }],
+        },
+        options: { cutout: '65%', plugins: { legend: { position: 'bottom' } } },
+      });
+
+      dibujar('g-evolucion', {
+        type: 'line',
+        data: {
+          labels: evo.map(r => new Date(r.hora).toLocaleTimeString('es-ES',
+                                 { hour: '2-digit', minute: '2-digit' })),
+          datasets: [{ label: 'Bicis libres', data: evo.map(r => r.bicis),
+                       borderColor: VERDE, backgroundColor: VERDE_SUAVE,
+                       fill: true, tension: 0.3, pointRadius: 0 }],
+        },
+        options: { plugins: { legend: { display: false } } },
+      });
+
+      dibujar('g-horas', {
+        type: 'bar',
+        data: {
+          labels: horas.map(r => r.hora + ':00'),
+          datasets: [{ label: 'Media', data: horas.map(r => r.media),
+                       backgroundColor: VERDE_OSCURO, borderRadius: 4 }],
+        },
+        options: { plugins: { legend: { display: false } } },
+      });
+    } catch (e) {
+      document.getElementById('estado').textContent = 'Error cargando datos: ' + e.message;
+      console.error(e);
+    }
+  }
+
+  cargar();
+  setInterval(cargar, 60000);
+</script>
+</body>
+</html>

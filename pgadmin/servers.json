@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Valenbisi Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "valenbisi",
+      "Username": "valenbisi",
+      "SSLMode": "prefer"
+    }
+  }
+}
